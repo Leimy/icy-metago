@@ -1,0 +1,29 @@
+#+TITLE: Icy-Metago Readme
+#+AUTHOR: David Leimbach
+
+* What is it?
+It tunes into a ShoutCast style stream, often used by Internet Radio
+stations and grabs the metadata out of it if available.  
+
+* What isn't it?
+It's not a shoutcast player written in Go, though it does divide the
+metadata from the stream.
+
+* License
+Pick one of those super-free BSD/MIT things that you like, or just
+call it Public Domain.  There's nothing interesting here really, as
+this stuff is well-documented.  I just enjoyed writing it and if you
+like it at all, well that's great.  You don't need to email me or 
+offer me a job, beer, cheesecake or whatever.  Just enjoy it.
+
+If you see some improvement you'd like to tell me about, I'm always
+happy to learn more, so go ahead and contact me here.
+
+In other words - enjoy!
+
+* No Warranty
+
+The software contained in this repository is provided "as-is," 
+without any express or implied warranty. In no event shall the 
+author be held liable for any damages arising from the use of 
+the software.
