@@ -3,7 +3,8 @@
 
 * What is it?
 It tunes into a ShoutCast style stream, often used by Internet Radio
-stations and grabs the metadata out of it if available.  
+stations and grabs the metadata out of it if available then, as a bot
+in an IRC channel on a server (all command line args).
 
 * What isn't it?
 It's not a shoutcast player written in Go, though it does divide the
