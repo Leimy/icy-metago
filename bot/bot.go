@@ -65,7 +65,7 @@ func (b *Bot) loginstuff() {
 	}
 }
 
-// Gets data from the bot, incoming from the IRC server
+// Gets data incoming from the IRC server
 // aggregates it into one buffer and sends it to the channel
 // forever
 func (b *Bot) fromIRC(completeSChan chan <-string) {
