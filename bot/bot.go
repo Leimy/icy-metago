@@ -1,57 +1,57 @@
 package bot
 
 import (
-	"net"
 	"bufio"
 	"fmt"
+	"net"
 	// "encoding/binary"
 	// "crypto/rand"
 	// "regexp"
+	"log"
 	"os"
 	"strings"
-	"log"
 
 	"icy-metago/commands"
 )
 
 type Bot struct {
-	room string
-	name string
+	room          string
+	name          string
 	serverAndPort string
-	bior *bufio.Reader
-	biow *bufio.Writer
-	cc chan commands.Command
-	SChan chan string
+	bior          *bufio.Reader
+	biow          *bufio.Writer
+	cc            chan commands.Command
+	SChan         chan string
 }
+
 // Functions to be used externally to
 // send commands to the bot
-func (b *Bot) Quit () {
+func (b *Bot) Quit() {
 	b.cc <- &commands.QuitCmd{}
 }
 
-func (b *Bot) SetMeta (s string) {
+func (b *Bot) SetMeta(s string) {
 	b.cc <- &commands.SetMetaCmd{&s}
 }
 
-func (b *Bot) SetInterval (i uint32) {
+func (b *Bot) SetInterval(i uint32) {
 	b.cc <- &commands.SetIntervalCmd{&i}
 }
 
-
 // Interfaces we want to implement for Bot
-func (b *Bot) Write (data []byte) (int, error) {
+func (b *Bot) Write(data []byte) (int, error) {
 	return b.biow.Write(data)
 }
 
-func (b *Bot) Read (data []byte) (int, error) {
+func (b *Bot) Read(data []byte) (int, error) {
 	return b.bior.Read(data)
 }
 
-func (b *Bot) ReadLine () ([]byte, bool, error) {
+func (b *Bot) ReadLine() ([]byte, bool, error) {
 	return b.bior.ReadLine()
 }
 
-func (b *Bot) Flush () error {
+func (b *Bot) Flush() error {
 	return b.biow.Flush()
 }
 
@@ -68,7 +68,7 @@ func (b *Bot) loginstuff() {
 // Gets data incoming from the IRC server
 // aggregates it into one buffer and sends it to the channel
 // forever
-func (b *Bot) fromIRC(completeSChan chan <-string) {
+func (b *Bot) fromIRC(completeSChan chan<- string) {
 	for {
 		bytes, morep, err := b.ReadLine()
 		if err != nil {
@@ -110,21 +110,23 @@ func (b *Bot) procLine(line string) {
 		resp := strings.Replace(line, "PING", "PONG", 1)
 		fmt.Fprintf(b, "%s\r\n", resp)
 	} else {
-		b.SChan <- line  // TODO: make this (string, string) for nick, text
+		b.SChan <- line // TODO: make this (string, string) for nick, text
 	}
 }
 
-func (b *Bot) loop () {
+func (b *Bot) loop() {
 	completeSChan := make(chan string)
-	go b.fromIRC(completeSChan) 
-	
+	go b.fromIRC(completeSChan)
+
 	for {
 		select {
-		case command := <- b.cc:
+		case command := <-b.cc:
 			b.procCommand(command)
-		case line := <- completeSChan:
+		case line := <-completeSChan:
 			b.procLine(line)
-			if err := b.Flush(); err != nil { log.Panic(err) }
+			if err := b.Flush(); err != nil {
+				log.Panic(err)
+			}
 		}
 	}
 }
@@ -139,10 +141,10 @@ func bot(room, name, serverAndport string) (*Bot, error) {
 	log.Print("Done connecting")
 
 	bot := &Bot{
-		room, 
-		name, 
-		serverAndport, 
-		bufio.NewReader(conn), 
+		room,
+		name,
+		serverAndport,
+		bufio.NewReader(conn),
 		bufio.NewWriter(conn),
 		make(chan commands.Command),
 		make(chan string)}

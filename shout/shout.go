@@ -1,12 +1,12 @@
 package shout
 
 import (
-	"icy-metago/bot"
-	"net/http"
-	"log"
 	"bufio"
-	"io"
 	"fmt"
+	"icy-metago/bot"
+	"io"
+	"log"
+	"net/http"
 	"strings"
 )
 
@@ -20,23 +20,23 @@ func (ipe *icyparseerror) Error() string {
 
 func parseIcy(rdr *bufio.Reader, c byte) (string, error) {
 	numbytes := int(c) * 16
-	bytes := make([] byte, numbytes)
-	n, err :=  io.ReadFull(rdr, bytes)
+	bytes := make([]byte, numbytes)
+	n, err := io.ReadFull(rdr, bytes)
 	if err != nil {
 		log.Panic(err)
 	}
 	if n != numbytes {
-		return "", &icyparseerror{"didn't get enough data"}  // may be invalid
+		return "", &icyparseerror{"didn't get enough data"} // may be invalid
 	}
 	return strings.Split(strings.Split(string(bytes), "=")[1], ";")[0], nil
 }
 
-func extractMetadata(rdr io.Reader, skip int) (<- chan string) {
+func extractMetadata(rdr io.Reader, skip int) <-chan string {
 	ch := make(chan string)
-	go func () {
+	go func() {
 		bufrdr := bufio.NewReaderSize(rdr, skip)
 		for {
-			skipbytes := make([] byte, skip)
+			skipbytes := make([]byte, skip)
 
 			_, err := io.ReadFull(bufrdr, skipbytes)
 			if err != nil {
@@ -52,14 +52,14 @@ func extractMetadata(rdr io.Reader, skip int) (<- chan string) {
 					log.Panic(err)
 				}
 				ch <- meta
-			} 				
+			}
 		}
 	}()
 	return ch
 }
 
 func GetMeta(url string, bot *bot.Bot) {
-	log.Printf("Shoutcast stream metadata yanker v0.1\n");
+	log.Printf("Shoutcast stream metadata yanker v0.1\n")
 	client := &http.Client{}
 
 	log.Printf("Getting from : %s\n", url)
@@ -78,15 +78,15 @@ func GetMeta(url string, bot *bot.Bot) {
 	if _, err = fmt.Sscan(resp.Header.Get("Icy-Metaint"), &amount); err != nil {
 		log.Panic(err)
 	}
-	
+
 	metaChan := extractMetadata(resp.Body, amount)
 
 	var lastsong string
 	for {
 		select {
-		case lastsong = <- metaChan:
-		case request := <- bot.SChan:
-			// TODO: Use regexp 
+		case lastsong = <-metaChan:
+		case request := <-bot.SChan:
+			// TODO: Use regexp
 			if strings.HasSuffix(request, "?lastsong?") {
 				bot.SetMeta(lastsong)
 			} else if strings.HasSuffix(request, "?quit?") {
@@ -95,4 +95,4 @@ func GetMeta(url string, bot *bot.Bot) {
 		}
 	}
 
-}	
+}
