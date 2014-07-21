@@ -6,9 +6,9 @@ import (
 	"net"
 	// "encoding/binary"
 	// "crypto/rand"
-	// "regexp"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"icy-metago/commands"
@@ -24,14 +24,34 @@ type Bot struct {
 	SChan         chan string
 }
 
+var userRegExp *regexp.Regexp
+var actionRegExp *regexp.Regexp
+var chanAndMessageRegExp *regexp.Regexp
+
+func init() {
+	// if this matches it produces string slices size 6
+	// 0 is the whole string that matched
+	// 1 is the nickname
+	// 2 is the channel involved
+	// 3 If it was an action, this is the string "ACTION " (trailing space intentional)
+	// 4 Color
+	// 5 The message delivered by the nick on the channel
+	//	chanAndMessageRegExp = regexp.MustCompile("^:(.+)!.*PRIVMSG (#.+) :(ACTION )?(.+)$")
+	chanAndMessageRegExp = regexp.MustCompile("^:([[:print:]]+)!.*PRIVMSG (#[[:print:]]+) :(ACTION )?[^[:digit:]]*?([[:print:]]+)$")
+}
+
 // Functions to be used externally to
 // send commands to the bot
 func (b *Bot) Quit() {
 	b.cc <- &commands.QuitCmd{}
 }
 
-func (b *Bot) SetMeta(s string) {
-	b.cc <- &commands.SetMetaCmd{&s}
+func (b *Bot) StringReplyCommand(s string, to ...string) {
+	if len(to) == 0 {
+		b.cc <- &commands.StringReplyCmd{nil, &s}
+	} else {
+		b.cc <- &commands.StringReplyCmd{&to[0], &s}
+	}
 }
 
 func (b *Bot) SetInterval(i uint32) {
@@ -91,7 +111,7 @@ func (b *Bot) fromIRC(completeSChan chan<- string) {
 // This is where command behaviors are implemented
 func (b *Bot) procCommand(command commands.Command) {
 	switch command.Code() {
-	case commands.SetMeta:
+	case commands.StringReply:
 		fmt.Fprintf(b, "PRIVMSG %s :%s\r\n", b.room, *command.String())
 		b.Flush()
 	case commands.Quit:
@@ -102,6 +122,34 @@ func (b *Bot) procCommand(command commands.Command) {
 	}
 }
 
+func (b *Bot) parseTokens(lines []string) {
+	if len(lines) == 0 {
+		// this is ok, just pass
+		return
+	}
+	if len(lines) < 5 {
+		log.Panic(lines)
+	}
+
+	body := lines[4]
+
+	log.Printf("4 == %q\n", body)
+
+	if lines[3] == "ACTION " {
+		// action handler
+	} else if body == "?lastsong?" {
+		// we pass this one to the shout server to get the metadata
+		b.SChan <- body
+	} else if body == "?quit?" {
+		b.Quit()
+	} else if strings.HasPrefix(body, b.name) {
+		// We've been addressed... reply
+		b.StringReplyCommand("Sup?", lines[1])
+	}
+	return
+}
+
+// process each line
 func (b *Bot) procLine(line string) {
 	log.Print(line)
 
@@ -110,23 +158,31 @@ func (b *Bot) procLine(line string) {
 		resp := strings.Replace(line, "PING", "PONG", 1)
 		fmt.Fprintf(b, "%s\r\n", resp)
 	} else {
-		b.SChan <- line // TODO: make this (string, string) for nick, text
+		b.parseTokens(chanAndMessageRegExp.FindStringSubmatch(line))
+	}
+	if err := b.Flush(); err != nil {
+		log.Panic(err)
 	}
 }
 
+// Just multiplex some channels for commands
 func (b *Bot) loop() {
 	completeSChan := make(chan string)
 	go b.fromIRC(completeSChan)
+
+	lchan := make(chan string)
+	go func() {
+		for line := range lchan {
+			b.procLine(line)
+		}
+	}()
 
 	for {
 		select {
 		case command := <-b.cc:
 			b.procCommand(command)
 		case line := <-completeSChan:
-			b.procLine(line)
-			if err := b.Flush(); err != nil {
-				log.Panic(err)
-			}
+			lchan <- line
 		}
 	}
 }

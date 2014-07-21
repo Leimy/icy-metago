@@ -86,11 +86,9 @@ func GetMeta(url string, bot *bot.Bot) {
 		select {
 		case lastsong = <-metaChan:
 		case request := <-bot.SChan:
-			// TODO: Use regexp
-			if strings.HasSuffix(request, "?lastsong?") {
-				bot.SetMeta(lastsong)
-			} else if strings.HasSuffix(request, "?quit?") {
-				bot.Quit()
+			if request == "?lastsong?" {
+				log.Printf("Got a request to print the metadata which is: %s\n", lastsong)
+				bot.StringReplyCommand(lastsong)
 			}
 		}
 	}

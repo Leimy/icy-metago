@@ -1,9 +1,11 @@
 package commands
 
+import "fmt"
+
 type CommandCode int
 
 const (
-	SetMeta CommandCode = iota
+	StringReply CommandCode = iota
 	SetInterval
 	Quit
 )
@@ -14,13 +16,21 @@ type Command interface {
 	UInt32() *uint32
 }
 
-type SetMetaCmd struct {
-	S *string
+type StringReplyCmd struct {
+	To   *string
+	Mess *string
 }
 
-func (mc *SetMetaCmd) Code() CommandCode { return SetMeta }
-func (mc *SetMetaCmd) String() *string   { return mc.S }
-func (mc *SetMetaCmd) UInt32() *uint32   { return nil }
+func (mc *StringReplyCmd) Code() CommandCode { return StringReply }
+func (mc *StringReplyCmd) String() *string {
+	if mc.To != nil {
+		s := fmt.Sprintf("%s: %s", *mc.To, *mc.Mess)
+		return &s
+	} else {
+		return mc.Mess
+	}
+}
+func (mc *StringReplyCmd) UInt32() *uint32 { return nil }
 
 type SetIntervalCmd struct {
 	I *uint32
