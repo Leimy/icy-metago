@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"icy-metago/bot"
-	"icy-metago/shout"
+	"github.com/Leimy/icy-metago/bot"
+	"github.com/Leimy/icy-metago/shout"
 	"log"
 	"os"
 )
@@ -28,5 +28,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	shout.GetMeta(os.Args[2], bot)
+	for {
+		shout.GetMeta(os.Args[2], bot)
+	}
 }

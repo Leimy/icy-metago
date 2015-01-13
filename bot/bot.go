@@ -4,14 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-	// "encoding/binary"
-	// "crypto/rand"
 	"log"
 	"os"
 	"regexp"
 	"strings"
-
-	"icy-metago/commands"
+	"github.com/Leimy/icy-metago/commands"
 )
 
 type Bot struct {
@@ -37,7 +34,7 @@ func init() {
 	// 4 Color
 	// 5 The message delivered by the nick on the channel
 	//	chanAndMessageRegExp = regexp.MustCompile("^:(.+)!.*PRIVMSG (#.+) :(ACTION )?(.+)$")
-	chanAndMessageRegExp = regexp.MustCompile("^:([[:print:]]+)!.*PRIVMSG (#[[:print:]]+) :(ACTION )?[^[:digit:]]*?([[:print:]]+)$")
+	chanAndMessageRegExp = regexp.MustCompile("^:([[:print:]]+)!.*PRIVMSG (#[[:print:]]+) :[0-9]*(ACTION )?[^[:digit:]]*?([[:print:]]+)$")
 }
 
 // Functions to be used externally to
@@ -85,28 +82,34 @@ func (b *Bot) loginstuff() {
 	}
 }
 
-// Gets data incoming from the IRC server
-// aggregates it into one buffer and sends it to the channel
-// forever
+
+// Filter returns a new slice holding only
+// the elements of s that satisfy f()
+func filterPrintable(s []byte) []byte {
+	var p []byte // == nil
+	found := false
+	for _, v := range s {
+		if !found {
+			if v != 3 {
+				p = append(p, v)
+			} else {
+				found = true
+			}
+		} else {
+			found = false
+			continue
+		}
+	}
+	return p
+}
+
 func (b *Bot) fromIRC(completeSChan chan<- string) {
-	for {
-		bytes, morep, err := b.ReadLine()
-		if err != nil {
-			log.Panic(err)
-		}
-		for morep {
-			bytes2, morep, err := b.ReadLine()
-			if err != nil {
-				log.Panic(err)
-			}
-			bytes = append(bytes, bytes2...)
-			if !morep {
-				break
-			}
-		}
-		completeSChan <- string(bytes)
+	scanner := bufio.NewScanner(b)
+	for scanner.Scan() {
+		completeSChan <- string(filterPrintable([]byte(scanner.Text())))
 	}
 }
+
 
 // This is where command behaviors are implemented
 func (b *Bot) procCommand(command commands.Command) {

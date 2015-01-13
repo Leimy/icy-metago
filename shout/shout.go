@@ -3,7 +3,7 @@ package shout
 import (
 	"bufio"
 	"fmt"
-	"icy-metago/bot"
+	"github.com/Leimy/icy-metago/bot"
 	"io"
 	"log"
 	"net/http"
@@ -40,7 +40,9 @@ func extractMetadata(rdr io.Reader, skip int) <-chan string {
 
 			_, err := io.ReadFull(bufrdr, skipbytes)
 			if err != nil {
-				log.Panic(err)
+				log.Printf("Failed: %v\n", err)
+				close(ch)
+				break;
 			}
 			c, err := bufrdr.ReadByte()
 			if err != nil {
@@ -56,6 +58,34 @@ func extractMetadata(rdr io.Reader, skip int) <-chan string {
 		}
 	}()
 	return ch
+}
+
+func StreamMeta(url string) {
+	log.Printf("Shoutcast stream metadata yanker v0.1\n")
+	client := &http.Client{}
+
+	log.Printf("Getting from : %s\n", url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	req.Header.Add("Icy-MetaData", "1")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	amount := 0
+	if _, err = fmt.Sscan(resp.Header.Get("Icy-Metaint"), &amount); err != nil {
+		log.Panic(err)
+	}
+
+	metaChan := extractMetadata(resp.Body, amount)
+
+	for meta := range metaChan {
+		fmt.Printf("%s\n", meta)
+	}		
 }
 
 func GetMeta(url string, bot *bot.Bot) {
@@ -85,6 +115,9 @@ func GetMeta(url string, bot *bot.Bot) {
 	for {
 		select {
 		case lastsong = <-metaChan:
+			if lastsong == "" {
+				return;
+			}
 		case request := <-bot.SChan:
 			if request == "?lastsong?" {
 				log.Printf("Got a request to print the metadata which is: %s\n", lastsong)
