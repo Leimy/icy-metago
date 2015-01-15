@@ -67,18 +67,21 @@ func StreamMeta(url string) {
 	log.Printf("Getting from : %s\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Panic(err)
+		log.Printf("%v\n", err)
+		return
 	}
 
 	req.Header.Add("Icy-MetaData", "1")
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Panic(err)
+		log.Printf("%v\n", err)
+		return
 	}
 
 	amount := 0
 	if _, err = fmt.Sscan(resp.Header.Get("Icy-Metaint"), &amount); err != nil {
-		log.Panic(err)
+		log.Printf("%v\n", err)
+		return
 	}
 
 	metaChan := extractMetadata(resp.Body, amount)
@@ -89,24 +92,27 @@ func StreamMeta(url string) {
 }
 
 func GetMeta(url string, bot *bot.Bot) {
-	log.Printf("Shoutcast stream metadata yanker v0.1\n")
+	log.Printf("Shoutcast stream metadata yanker v0.5\n")
 	client := &http.Client{}
 
 	log.Printf("Getting from : %s\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Panic(err)
+		log.Printf("%v\n", err)
+		return
 	}
 
 	req.Header.Add("Icy-MetaData", "1")
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Panic(err)
+		log.Printf("%v\n", err)
+		return
 	}
 
 	amount := 0
 	if _, err = fmt.Sscan(resp.Header.Get("Icy-Metaint"), &amount); err != nil {
-		log.Panic(err)
+		log.Printf("%v\n", err)
+		return
 	}
 
 	metaChan := extractMetadata(resp.Body, amount)
@@ -116,7 +122,7 @@ func GetMeta(url string, bot *bot.Bot) {
 		select {
 		case lastsong = <-metaChan:
 			if lastsong == "" {
-				return;
+				return
 			}
 		case request := <-bot.SChan:
 			if request == "?lastsong?" {
@@ -125,5 +131,4 @@ func GetMeta(url string, bot *bot.Bot) {
 			}
 		}
 	}
-
 }
