@@ -85,6 +85,8 @@ func (b *Bot) loginstuff() {
 
 // Filter returns a new slice holding only
 // the elements of s that satisfy f()
+// Tiny state machine to filter out colors if they're
+// encoded.
 func filterPrintable(s []byte) []byte {
 	var p []byte // == nil
 	found := false
@@ -108,8 +110,8 @@ func (b *Bot) fromIRC(completeSChan chan<- string) {
 	for scanner.Scan() {
 		completeSChan <- string(filterPrintable([]byte(scanner.Text())))
 	}
+	close(completeSChan)
 }
-
 
 // This is where command behaviors are implemented
 func (b *Bot) procCommand(command commands.Command) {
@@ -143,8 +145,9 @@ func (b *Bot) parseTokens(lines []string) {
 	} else if body == "?lastsong?" {
 		// we pass this one to the shout server to get the metadata
 		b.SChan <- body
-	} else if body == "?quit?" {
-		b.Quit()
+	} else if body == "?tweet?" {
+		// The shoutserver handles this too, because it's easy
+		b.SChan <- body
 	} else if strings.HasPrefix(body, b.name) {
 		// We've been addressed... reply
 		b.StringReplyCommand("Sup?", lines[1])
@@ -154,13 +157,13 @@ func (b *Bot) parseTokens(lines []string) {
 
 // process each line
 func (b *Bot) procLine(line string) {
-	log.Print(line)
 
 	// Handle PING so we don't get hung up on.
 	if strings.HasPrefix(line, "PING :") {
 		resp := strings.Replace(line, "PING", "PONG", 1)
 		fmt.Fprintf(b, "%s\r\n", resp)
 	} else {
+		log.Print(line)
 		b.parseTokens(chanAndMessageRegExp.FindStringSubmatch(line))
 	}
 	if err := b.Flush(); err != nil {
@@ -174,6 +177,11 @@ func (b *Bot) loop() {
 	go b.fromIRC(completeSChan)
 
 	lchan := make(chan string)
+	defer func() {
+		close(lchan)
+		close(b.SChan)
+	}()
+
 	go func() {
 		for line := range lchan {
 			b.procLine(line)
@@ -185,12 +193,18 @@ func (b *Bot) loop() {
 		case command := <-b.cc:
 			b.procCommand(command)
 		case line := <-completeSChan:
-			lchan <- line
+			if line == "" {
+				return
+			} else {
+				lchan <- line
+			}
 		}
 	}
 }
 
-func bot(room, name, serverAndport string) (*Bot, error) {
+func bot(room, name, serverAndport string, botChan chan string) (*Bot, error) {
+	comchan := make(chan commands.Command)
+	
 	log.Printf("IRC bot connecting to %s as %s to channel %s\n",
 		serverAndport, name, room)
 	conn, err := net.Dial("tcp4", serverAndport)
@@ -205,8 +219,8 @@ func bot(room, name, serverAndport string) (*Bot, error) {
 		serverAndport,
 		bufio.NewReader(conn),
 		bufio.NewWriter(conn),
-		make(chan commands.Command),
-		make(chan string)}
+		comchan,
+		botChan}
 
 	bot.loginstuff()
 	go bot.loop()
@@ -214,6 +228,6 @@ func bot(room, name, serverAndport string) (*Bot, error) {
 	return bot, nil
 }
 
-func NewBot(room, name, serverAndPort string) (*Bot, error) {
-	return bot(room, name, serverAndPort)
+func NewBot(room, name, serverAndPort string, botChan chan string) (*Bot, error) {
+	return bot(room, name, serverAndPort, botChan)
 }

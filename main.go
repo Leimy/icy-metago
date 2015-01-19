@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -6,7 +7,13 @@ import (
 	"github.com/Leimy/icy-metago/shout"
 	"log"
 	"os"
+	"flag"
 )
+
+var irc       = flag.String("server", "irc.radioxenu.com:6667", "<server>:<port>")
+var room      = flag.String("channel", "#radioxenu", "<#channelname>")
+var streamurl = flag.String("stream", "http://radioxenu.com:8000/relay", "<http://url-to-get-metadata>")
+
 
 func usage(pname string) {
 	fmt.Printf("%s irc.radioxenu.com:6667 http://radioxenu.com:8000/relay metabot #radioxenu\n", pname)
@@ -15,20 +22,21 @@ func usage(pname string) {
 
 // maybe use flags
 func main() {
-	if len(os.Args) < 5 {
-		log.Print(len(os.Args))
-		usage(os.Args[0])
-	}
+	flag.Parse()
 
-	bot, err := bot.NewBot(
-		os.Args[4],
-		os.Args[3],
-		os.Args[1])
-	if err != nil {
-		log.Panic(err)
-	}
-
+	botChan := make(chan string)
 	for {
-		shout.GetMeta(os.Args[2], bot)
+		theBot, err := bot.NewBot(
+			*room,
+			"metabot",
+			*irc,
+			botChan)
+
+		if err != nil {
+			log.Panic(err)
+		}
+		
+		shout.GetMeta(*streamurl, theBot, botChan)
+
 	}
 }

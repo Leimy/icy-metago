@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"github.com/Leimy/icy-metago/twitter"
 )
 
 type icyparseerror struct {
@@ -91,7 +92,7 @@ func StreamMeta(url string) {
 	}		
 }
 
-func GetMeta(url string, bot *bot.Bot) {
+func GetMeta(url string, bot *bot.Bot, requestChan chan string) {
 	log.Printf("Shoutcast stream metadata yanker v0.5\n")
 	client := &http.Client{}
 
@@ -124,10 +125,15 @@ func GetMeta(url string, bot *bot.Bot) {
 			if lastsong == "" {
 				return
 			}
-		case request := <-bot.SChan:
+		case request := <-requestChan:
 			if request == "?lastsong?" {
 				log.Printf("Got a request to print the metadata which is: %s\n", lastsong)
 				bot.StringReplyCommand(lastsong)
+			} else if request == "?tweet?" {
+				log.Printf("Got a request to tweet that meta (%s)\n", lastsong)
+				twitter.Tweet(lastsong)
+			} else if request == "" {
+				log.Printf("Bot died!, we're out too!")
 			}
 		}
 	}
