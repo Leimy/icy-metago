@@ -51,10 +51,6 @@ func (b *Bot) StringReplyCommand(s string, to ...string) {
 	}
 }
 
-func (b *Bot) SetInterval(i uint32) {
-	b.cc <- &commands.SetIntervalCmd{&i}
-}
-
 // Interfaces we want to implement for Bot
 func (b *Bot) Write(data []byte) (int, error) {
 	return b.biow.Write(data)
@@ -142,16 +138,16 @@ func (b *Bot) parseTokens(lines []string) {
 
 	if lines[3] == "ACTION " {
 		// action handler
-	} else if body == "?lastsong?" {
-		// we pass this one to the shout server to get the metadata
-		b.SChan <- body
-	} else if body == "?tweet?" {
-		// The shoutserver handles this too, because it's easy
-		b.SChan <- body
 	} else if strings.HasPrefix(body, b.name) {
 		// We've been addressed... reply
 		b.StringReplyCommand("Sup?", lines[1])
+	} else {
+		switch body {
+		case "?lastsong?", "?tweet?", "?autolast?", "?autotweet?":
+			b.SChan <- body
+		}
 	}
+
 	return
 }
 
@@ -204,7 +200,7 @@ func (b *Bot) loop() {
 
 func bot(room, name, serverAndport string, botChan chan string) (*Bot, error) {
 	comchan := make(chan commands.Command)
-	
+
 	log.Printf("IRC bot connecting to %s as %s to channel %s\n",
 		serverAndport, name, room)
 	conn, err := net.Dial("tcp4", serverAndport)
